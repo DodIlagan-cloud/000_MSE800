@@ -22,7 +22,7 @@ def convtoF():
     #print("Farenheit:",temp_list)
     return faren
 def above20():
-    a20=np.where(temp_list > 20)
+    a20=np.where(temp_list > 20)[0]
     return a20
 #    for i 
 if __name__ == "__main__":
@@ -36,6 +36,6 @@ if __name__ == "__main__":
     print("Average Temp:",ave_temp_val)
     print("Highest Temp:",hi_temp, "Lowest Temp:",lo_temp)
     print("Farenheit:",faren)
-    print("above20:",a20)
+    print("Temp that are above 20:",a20)
     #ans = factorial()
     #print("\n Final result:", ans)
