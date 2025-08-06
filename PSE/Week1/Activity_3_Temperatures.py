@@ -1,7 +1,6 @@
 import numpy as np
 
 def store_data():
-
     temp_list = np.array([18.5, 19, 20, 25.0, 2, 30, 13.9])
     return temp_list
 
