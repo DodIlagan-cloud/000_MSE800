@@ -26,7 +26,7 @@ def prompt_for_letter(used_letters):
             continue
         return guess
     
-def reveal_letters(self, word, blanks, letter):
+def reveal_letters(word, blanks, letter):
     """
     Replace matching blanks with the guessed letter.
     Returns True if at least one letter was revealed; otherwise False.

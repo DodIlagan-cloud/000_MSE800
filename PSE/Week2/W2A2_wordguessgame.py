@@ -27,7 +27,7 @@ def prompt_for_letter(used_letters):
         return guess
     
 class SecretWords:
-    def __init__(self,word, blanks, letter):
+    def __init__(self, word, blanks, letter):
         self.word = word
         self.blanks = blanks
         self.letter = letter
