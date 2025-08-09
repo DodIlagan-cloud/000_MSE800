@@ -1,5 +1,5 @@
 class StringManipulator:
-    #def __init__(self,text):
+    #def __init__(self,text): -- Init used to inialize the variables that the class will be using.
     #    self.text = text
     def find_character(self,char,text):
         self.text = text
@@ -12,8 +12,8 @@ class StringManipulator:
         return self.text.upper()
 
 def main():
-    name = StringManipulator()
-    text=input("enter a word:".strip().lower())
+    name = StringManipulator() # since init is gone, the class doesnt take any argumentss
+    text=input("enter a word:".strip().lower()) # the text variable that the class will be using is declared as global variable here.
     result = name.find_character(input("enter character:").strip().lower(),text)
     print("index of Char",result)
     result_length = name.find_legnth(name)
