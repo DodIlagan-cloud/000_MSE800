@@ -65,6 +65,6 @@ def main():
     for emp_row in employees:
         hrapp = HRApp(emp_row)
         emp_row=hrapp.display_info(emp_row)
-
+        
 if __name__ == "__main__":
     main()
