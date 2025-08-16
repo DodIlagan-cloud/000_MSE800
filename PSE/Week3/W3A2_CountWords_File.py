@@ -1,11 +1,9 @@
 """Week 3 - Activity 2 : Count the words in the file
 Using the attached text file, open, read, and write the complete information for the demo.txt. 
 Share the GitHub link here(with adding the screenshot of the result).
-W3A2_ORW_File.py - Week 3 Activity 1
+W3A2_ORW_File.py - Week 3 Activity 2
 Eduardo JR Ilagan
 """
-
-
 class TextProcess():
     def __init__(self,fileforproc):
         self.fileforproc = fileforproc
