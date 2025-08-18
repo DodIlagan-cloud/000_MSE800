@@ -29,11 +29,6 @@ def main():
     fileforproc=r"G:\My Drive\00_Pers\000_MSE800\PSE\Week3\demo.txt"
     newfile=r"G:\My Drive\00_Pers\000_MSE800\PSE\Week3\demo_01.txt"
     txt_proc = TextProcess(fileforproc,newfile)
-    #content = open(fileforproc,"r",)
-    #for line in content:
-    #    print(line[0:-1])
-    #content.close()
-    #print(fileforproc)
     content = txt_proc.openfile(fileforproc)
     txt_proc.readfile(content)
     txt_proc.writefile(newfile)

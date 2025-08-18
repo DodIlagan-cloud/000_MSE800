@@ -1,0 +1,24 @@
+"""Week 3 - Activity 4 : Yoobee DB Design
+Design a database for YB college:
+Project scope (short paragraph)
+Write a  story that defines the purpose and scope of the database. Describe the main entities (e.g., students, lecturers, etc).
+Entities and EER diagram
+List all entities with brief descriptions of their roles and attributes (e.g., Student, Course, Class, Lecturer, etc).
+Table design
+State how many tables are required after mapping the EER to a relational schema.
+Yoobee DB Design - Week 3 Activity 4
+Eduardo JR Ilagan
+"""
+
+
+
+The database will have the list of students, instructors, courses and subjects, schedules, and tracking for the payments. 
+The user of the system can look for the details of  each student, which course and class schedule the student is attending. 
+The user can also check the instructors and which classes he is teaching. 
+The students table should have their details as its attiributes, the same with the instructor. 
+The subjects table should be able to link the students and the lecturers, it should have the subject description, requirement as its attributes. DatabaseER
+The payents table will contain the transaction id, student id and date of the transaction. 
+The course table will have the course id and course name as its attributes and it should be connected to the subjects table making a wayt to be connected to both instructors' and sturdents'. 
+
+
+There will be 6 tables.

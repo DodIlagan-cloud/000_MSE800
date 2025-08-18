@@ -35,3 +35,24 @@ def delete_user(user_id):
     conn.commit()
     conn.close()
     print("🗑️ User deleted.")
+
+# Start EJP W3A5
+def add_Student(name, address):
+    conn = create_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("INSERT INTO Students (Stu_name, Stu_address) VALUES (?, ? )", (name, address))
+        conn.commit()
+        print(" User added successfully.")
+    except sqlite3.IntegrityError:
+        print(" Email must be unique.")
+    conn.close()
+
+def view_Students():
+    conn = create_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM Students")
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
+# End EJP W3A5
