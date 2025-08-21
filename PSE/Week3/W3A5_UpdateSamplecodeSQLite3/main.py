@@ -8,8 +8,7 @@ Eduardo JR Ilagan
 
 
 
-from database import create_table
-from database import create_student_table
+from database import create_table,create_student_table
 from user_manager import add_user, view_users, search_user, delete_user, add_Student, view_Students
 
 def menu():
