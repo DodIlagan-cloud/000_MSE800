@@ -1,0 +1,31 @@
+Week 4 - Activity 1: Design use case diagram
+Step 1: Write the number of actors and use cases for your college project, defining the scope of the project in the same way as the activity completed in Week 3 for your college. 
+Share your GitHub Link with your scenario from Week 3.
+ 
+W4A1 Design use case diagram.txt - Week 3 Activity 6 - W3A6 - EJI
+Eduardo JR Ilagan
+"""
+
+List of Actors
+1. Students
+2. Instructor
+3. cler
+
+Use case
+Student to Enroll to Course
+Student to Pay
+student to check schedule of subject
+Student to attend subject for markings
+instructor to check for subject and schedule to teach
+Instructor to teach subject and assign markings to student
+Clerk to Add Student from enrollment
+clerk to add payment records
+Clerk to Check Payments
+Clerk to add class record for student
+clerk to add insturctor into the instructor records
+clerk to remove instructor from instructor records
+clerk to assign subjects for teaching to instructor
+clerk to remove students from student records
+clerk to add subjects into subject record
+clerk to remove subjects from subject recordds
+clerk to remove students from class records
