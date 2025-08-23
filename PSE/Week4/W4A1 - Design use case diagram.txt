@@ -1,3 +1,4 @@
+"""
 Week 4 - Activity 1: Design use case diagram
 Step 1: Write the number of actors and use cases for your college project, defining the scope of the project in the same way as the activity completed in Week 3 for your college. 
 Share your GitHub Link with your scenario from Week 3.
@@ -14,31 +15,34 @@ The database will have the list of students, instructors, courses and subjects, 
 The user of the system can look for the details of each student, which course and class schedule the student is attending.
 The user can also check the instructors and which classes he is teaching.
 The students table should have their details as its attiributes, the same with the instructor.
-The subjects table should be able to link the students and the lecturers, it should have the subject description, requirement as its attributes. DatabaseER
+The subjects table should be able to link the students and the lecturers, it should have the subject description, requirement as its attributes. 
 The payents table will contain the transaction id, student id and date of the transaction.
 The course table will have the course id and course name as its attributes and it should be connected to the subjects table making a wayt to be connected to both instructors' and sturdents'.
 
 
-List of Actors
-1. Students
-2. Instructor
-3. cler
+Setp 1
+    List of Actors
+    1. Students
+    2. Instructor
+    3. clerk
 
-Use cases:
-Student to Enroll to Course
-Student to Pay
-student to check schedule of subject
-Student to attend subject for markings
-instructor to check for subject and schedule to teach
-Instructor to teach subject and assign markings to student
-Clerk to Add Student from enrollment
-clerk to add payment records
-Clerk to Check Payments
-Clerk to add class record for student
-clerk to add insturctor into the instructor records
-clerk to remove instructor from instructor records
-clerk to assign subjects for teaching to instructor
-clerk to remove students from student records
-clerk to add subjects into subject record
-clerk to remove subjects from subject recordds
-clerk to remove students from class records
+    Use cases:
+    Student to Enroll to Course
+    Student to Pay
+    student to check schedule of subject
+    Student to attend subject for markings
+    instructor to check for subject and schedule to teach
+    Instructor to teach subject and assign markings to student
+    Clerk to Add Student from enrollment
+    clerk to add payment records
+    Clerk to Check Payments
+    Clerk to add class record for student
+    clerk to add insturctor into the instructor records
+    clerk to remove instructor from instructor records
+    clerk to assign subjects for teaching to instructor
+    clerk to remove students from student records
+    clerk to add subjects into subject record
+    clerk to remove subjects from subject recordds
+    clerk to remove students from class records
+
+Step2
