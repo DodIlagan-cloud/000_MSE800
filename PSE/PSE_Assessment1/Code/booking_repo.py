@@ -188,3 +188,37 @@ class BookingRepo:
         if b.status != "pending": raise DomainError("Only pending bookings can be rejected.")
         # Optionally log 'reason' somewhere (separate table / audit)
         return self.sql.update("bookings", where={"booking_id__eq": booking_id}, changes={"status": "rejected"})
+
+
+# ────────────────────────────────────────────────────────────────────────────────
+# Admin: List All Bookings (formatting only)
+# ────────────────────────────────────────────────────────────────────────────────
+import sql_repo
+
+def _pp_bookings(rows):
+    # Header
+    print("\nAll Bookings")
+    if not rows:
+        print("  (no bookings found)\n"); return
+    hdr = "  {:>5}  {:<22}  {:<22}  {:<22}  {:>5}  {:>10}  {:<9}"
+    print(hdr.format("ID","Customer","Email","Car","Days","Total","Status"))
+    print("  " + "-"*105)
+    line = "  {:>5}  {:<22}  {:<22}  {:<22}  {:>5}  ${:>9.2f}  {:<9}"
+    for r in rows:
+        car = f"{r.get('car_year','')} {r.get('car_make','')} {r.get('car_model','')}"
+        print(line.format(
+            int(r["booking_id"]),
+            (r.get("customer_name",""))[:22],
+            (r.get("customer_email",""))[:22],
+            car[:22],
+            int(r.get("rental_days",0)),
+            float(r.get("total_fee",0.0)),
+            (r.get("status",""))[:9],
+        ))
+    print()
+
+def list_all_bookings_cli():
+    filt = input("\nFilter by status [all/pending/approved/rejected] (Enter=all): ").strip().lower()
+    status = filt if filt in ("pending","approved","rejected") else None
+    rows = sql_repo.list_all_bookings(status=status)
+    _pp_bookings(rows)

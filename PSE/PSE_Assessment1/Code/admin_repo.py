@@ -16,7 +16,8 @@ Aligned with UML:
 """
 from __future__ import annotations
 from typing import Optional, Dict, Any, List
-
+import datetime
+import sql_repo as _sql
 from sql_repo import repo as _repo, require_tables_configured as _require, SqlError, prompt_required_text, prompt_required_int, prompt_required_float
 from car_repo import CarRepo, Car, DomainError as CarDomainError, RepoError as CarRepoError
 from booking_repo import BookingRepo, DomainError as BkgDomainError, RepoError as BkgRepoError
@@ -271,6 +272,7 @@ def admin_bookings_menu():
         print(" 2) Approve a booking")
         print(" 3) Reject a booking")
         print(" 4) Create booking on behalf of customer")
+        print(" 5) List all bookings")   
         print(" 0) Back")
         print("====================================\n")
         ch = input("Choose: ").strip()
@@ -323,7 +325,9 @@ def admin_bookings_menu():
                 with _repo().conn:
                     b = br.create_pending(user_id=u.id, car_id=car_id, start_date=start, end_date=end, extras=None)
                 print(f"Booking created (pending): id={b.id}, customer={u.email}, car={b.car_id}, days={b.days}, total=${b.total_fee:.2f}")
-
+            elif ch == "5":                    
+                import booking_repo
+                booking_repo.list_all_bookings_cli()
             else:
                 print("Choose a valid option.")
 
@@ -340,6 +344,7 @@ def admin_maintenance_menu():
         print(" 1) Open maintenance")
         print(" 2) Close maintenance")
         print(" 3) Manage maintenance") 
+        print(" 4) List all maintenance")
         print(" 0) Back")
         print("======================================\n")
         ch = input("Choose: ").strip()
@@ -363,6 +368,8 @@ def admin_maintenance_menu():
                 print("Maintenance closed." if n else "No changes.")
             elif ch == "3":
                 admin_maintenance_list_menu()
+            elif ch == "4":
+                admin_list_all_maintenance_cli()
             else:
                 print("Choose a valid option.")
         except (ValueError, CarDomainError, CarRepoError) as ex:
@@ -416,32 +423,76 @@ def admin_maintenance_list_menu():
         except (ValueError, CarDomainError, CarRepoError) as ex:
             print(f"Error: {ex}")
 
+def _pp_maintenance(rows):
+    print("\nAll Maintenance")
+    if not rows:
+        print("  (no maintenance records)\n"); return
+    hdr = "  {:>5}  {:<22}  {:<10}  {:>8}  {:<10}  {:<10}  {:<24}"
+    print(hdr.format("ID","Car","Type","Cost","Start","End","Notes"))
+    print("  " + "-"*105)
+    line = "  {:>5}  {:<22}  {:<10}  ${:>7.2f}  {:<10}  {:<10}  {:<24}"
+    for r in rows:
+        car = f"{r.get('car_year','')} {r.get('car_make','')} {r.get('car_model','')}"
+        print(line.format(
+            int(r["maint_id"]),
+            car[:22],
+            (r.get("type",""))[:10],
+            float(r.get("cost",0.0)),
+            (r.get("start_date",""))[:10],
+            (r.get("end_date","") or "")[:10],
+            (r.get("notes","") or "")[:24],
+        ))
+    print()
+
+def admin_list_all_maintenance_cli():
+    filt = input("\nFilter by status [all/open/closed] (Enter=all): ").strip().lower()
+    status = filt if filt in ("open","closed") else None
+    rows = _sql.list_all_maintenance(status=status)
+    _pp_maintenance(rows)
+
+# ────────────────────────────────────────────────────────────────────────────────
+# Admin — Analytics Dashboard
+# ────────────────────────────────────────────────────────────────────────────────
 def admin_analytics_menu():
-    """Simple analytics UI wrapper around analytics_repo.print_report()."""
     while True:
-        print("\n=========== Admin — Analytics ===========")
-        print(" 1) Full report (all data)")
-        print(" 2) Report by date range")
-        print(" 3) Report by year")
+        print("\n===== Analytics Dashboard =====")
+        print(" 1) Top Users (by revenue, year)")
+        print(" 2) Top Car Revenue (year)")
+        print(" 3) Cars with Highest Maintenance Cost (year)")
         print(" 0) Back")
-        print("=========================================\n")
-        ch = input("Choose: ").strip()
-        try:
-            if ch == "0":
-                return
-            elif ch == "1":
-                analytics_repo.print_report(start=None, end=None, year=None)
-            elif ch == "2":
-                start = input("Start (YYYY-MM-DD, blank=none): ").strip() or None
-                end   = input("End   (YYYY-MM-DD, blank=none): ").strip() or None
-                analytics_repo.print_report(start=start, end=end, year=None)
-            elif ch == "3":
-                y = input("Year (e.g., 2025): ").strip()
-                year = int(y) if y else None
-                analytics_repo.print_report(start=None, end=None, year=year)
-            else:
-                print("Choose a valid option.")
-        except ValueError:
-            print("Year must be a number (e.g., 2025).")
-        except Exception as e:
-            print(f"Error: {e}")
+        choice = input("Choose: ").strip()
+
+        # Year (defaults to current if blank)
+        y_in = input("Enter year (YYYY) [default: current]: ").strip()
+        if not y_in:
+            year = datetime.date.today().year
+        else:
+            try:
+                year = int(y_in)
+            except ValueError:
+                print("Please enter a valid year (e.g., 2025).")
+                continue
+
+        # Row limit (defaults to 5)
+        lim_in = input("How many rows? [5]: ").strip()
+        limit = 5
+        if lim_in:
+            try:
+                limit = max(1, int(lim_in))
+            except ValueError:
+                print("Using default: 5")
+
+
+        if choice == "0":
+            return
+        if choice == "1":
+            # Top Users by revenue for the year
+            analytics_repo.print_top_users(year, limit)
+        elif choice == "2":
+            # Top revenue cars for the year
+            analytics_repo.print_top_car_revenue(year, limit)
+        elif choice == "3":
+            # Highest maintenance cost cars for the year
+            analytics_repo.print_highest_maint_cost(year, limit)
+        else:
+            print("Please choose a valid option.")
