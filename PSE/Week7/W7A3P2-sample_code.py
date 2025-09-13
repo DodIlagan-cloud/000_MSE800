@@ -4,7 +4,7 @@ See teh attached code. Share the GitHub link with your description.
 
 Answer:
  It appears that the abstract method is used to be able to create classes that are not hard coded. 
- This way minimizes the code and the dependency on hardcoded values that enables the system to be easier to expand and manage.
+ This way utilizes the inheritance and encapsulation features of OOP by having a template from which the classes are based on.
  
 Sample_code.py
  """
