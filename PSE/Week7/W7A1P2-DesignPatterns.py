@@ -1,19 +1,22 @@
 import sqlite3
 import time 
+
+def create_connection():
+    conn = sqlite3.connect("app.db")
+    return conn
+
 class UserService:
-    def get_user(self, user_id):
-        conn = sqlite3.connect('app.db')
+    def get_user(self, user_id,conn):
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM users WHERE id = ?", (user_id, ))
         result = cursor. fetchone ()
-        conn.close()
         return result
 
 # New connection
 
 class OrderService:
-    def get_orders(self, user_id):
-        conn = sqlite3.connect('app.db') # Another new connection
+    def get_orders(self, user_id,conn):
+        create_connection() # Another new connection
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM orders WHERE user_id = ?", (user_id,))
         result = cursor. fetchall()
@@ -87,11 +90,13 @@ def main():
     #create_tables()
     #add_user()
     #add_order()
+    conn=create_connection()
     u = UserService()
     #print(u)
     o = OrderService()
     #print(o)
     end = time.perf_counter_ns()
+    conn.close()
     print(end-start)
 
 if __name__ == "__main__":
