@@ -3,8 +3,8 @@ What problems might arise if a program directly creates objects with in multiple
 See teh attached code. Share the GitHub link with your description.
 
 Answer:
- It appears that the abstract method is used to be able to create classes that are not hard coded. 
- This way minimizes the code and the dependency on hardcoded values that enables the system to be easier to expand and manage.
+It appears that the factory is used as a preparation for better code maintanance, 
+the factory method enables an inherited template
  
 Sample_code.py
  """
