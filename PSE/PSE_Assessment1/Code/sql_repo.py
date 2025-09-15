@@ -11,7 +11,7 @@ sql_repo.py — Generic dynamic SQL repository for SQLite.
 - Safe dynamic WHERE builder supporting operators: eq, ne, lt, lte, gt, gte, like, in, isnull, notnull
 """
 from __future__ import annotations
-import sqlite3, re, argparse
+import sqlite3, re, argparse, os
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 from pathlib import Path
 from datetime import datetime
@@ -159,6 +159,62 @@ class SqlRepo:
         return " WHERE " + " AND ".join(clauses), params
 
     # ---------- SELECT ----------
+    # ────────────────────────────────────────────────────────────────────────────────
+# Generic dynamic SELECT (joins, expressions, group/order/limit)
+# ────────────────────────────────────────────────────────────────────────────────
+    def select_dyn(
+        self,
+        from_table: str,
+        columns,
+        *,
+        joins=None,
+        where: str | None = None,
+        params: list | tuple | None = None,
+        group_by=None,
+        order_by: str | None = None,
+        limit: int | None = None,
+    ):
+        """
+        Build a SELECT dynamically without hardcoding full SQL.
+        - from_table: e.g. "bookings b"
+        - columns: list of strings OR (expr, alias) tuples, e.g. ("COUNT(b.booking_id)", "rentals")
+        - joins: list[str] like ["JOIN users u ON u.user_id=b.user_id"]
+        - where: a single WHERE expression string (use ? placeholders)
+        - params: list/tuple of values for placeholders (year, etc.)
+        - group_by: list[str] of columns/aliases
+        - order_by: string, can reference aliases defined in `columns`
+        - limit: optional integer (appended as a bound parameter)
+        Returns: list[dict]
+        """
+        # columns
+        col_sql = []
+        for col in columns:
+            if isinstance(col, (tuple, list)) and len(col) >= 2:
+                expr, alias = str(col[0]), str(col[1])
+                col_sql.append(f"{expr} AS {alias}")
+            else:
+                col_sql.append(str(col))
+
+        sql = f"SELECT {', '.join(col_sql)} FROM {from_table}"
+        if joins:
+            sql += " " + " ".join(joins)
+        if where:
+            sql += " WHERE " + where
+        if group_by:
+            if isinstance(group_by, (list, tuple)):
+                sql += " GROUP BY " + ", ".join(group_by)
+            else:
+                sql += " GROUP BY " + str(group_by)
+        if order_by:
+            sql += " ORDER BY " + order_by
+        bind = list(params or [])
+        if limit is not None:
+            sql += " LIMIT ?"
+            bind.append(int(limit))
+
+        cur = self.conn.execute(sql, bind)
+        return [dict(r) for r in cur.fetchall()]
+    
     def select(
         self,
         table: str,
@@ -330,6 +386,19 @@ def require_tables_configured(names):
     r = repo()
     SqlRepo.require_tables(r.conn, names)
 
+def select_sql(sql: str, params: tuple | list | dict | None = None) -> list[dict]:
+    """
+    Safe, read-only SELECT runner (single statement). Returns list of dict rows.
+    """
+    q = (sql or "").strip()
+    if not q.lower().startswith("select"):
+        raise SqlError("select_sql only allows SELECT statements.")
+    if q.count(";") > 0 and not q.endswith(";"):
+        raise SqlError("Multiple statements not allowed.")
+    cur = repo().conn.execute(q, params or [])
+    cols = [d[0] for d in cur.description]
+    return [dict(zip(cols, row)) for row in cur.fetchall()]
+
 # ---------- CLI helpers (optional) ----------
 def cli_argparser(description: str | None = None):
     """Return an argparse.ArgumentParser with a standard --db option."""
@@ -417,7 +486,7 @@ def autoinit(
     db_path: str | None = None,
     *,
     schema_path: str | None = "schema.sql",
-    seed: bool = False,
+    seed_admin: bool = True,
     admin_email: str = "admin@rental.local",
     admin_name: str = "Admin Superuser",
     admin_pass: str | None = None,
@@ -439,19 +508,310 @@ def autoinit(
     # Assert again (fail fast if schema.sql was wrong or not found)
     SqlRepo.require_tables(r.conn, ["users", "cars"])
 
-    if seed:
-        try:
-            # Reuse your seed functions
-            from seed_db import ensure_admin, seed_cars  # your existing script
-            with r.conn:
-                uid, maybe_pw = ensure_admin(r.conn, admin_email, admin_name, admin_pass)
-                # Seed cars only if empty to avoid duplicates
-                if r.conn.execute("SELECT COUNT(1) FROM cars").fetchone()[0] == 0:
-                    seed_cars(r.conn)
-            if maybe_pw:
-                print("\n*** Admin password (generated) ***\n" + str(maybe_pw) + "\n")
-            return {"admin_user_id": uid, "admin_password": maybe_pw}
-        except Exception as e:
-            # Don't break app start if seed script isn't available
-            print(f"[autoinit] Seeding skipped or failed: {e}")
-    return None
+    if seed_admin:
+        maybe_pw = _ensure_admin_superuser(
+            r.conn, email=admin_email, name=admin_name, password=admin_pass
+        )
+        result = {"admin_password": maybe_pw}  # None if not generated
+        if maybe_pw:
+            print("\n*** Admin password (generated) ***\n" + str(maybe_pw) + "\n")
+    return result
+
+def _ensure_admin_superuser(conn, *, email: str, name: str, password: str | None):
+    """
+    Idempotent: if admin with this email exists, do nothing.
+    Returns the generated password if one was created (else None).
+    """
+    import secrets, hashlib, binascii
+
+    row = conn.execute("SELECT user_id FROM users WHERE email = ?", (email,)).fetchone()
+    if row:
+        return None  # already present
+
+    if not password:
+        password = secrets.token_urlsafe(16)
+        generated = password
+    else:
+        generated = None
+
+    # Hash password compatible with user_repo (PBKDF2-HMAC-SHA256, 200k rounds)
+    salt = secrets.token_bytes(16)
+    dk = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 200_000)
+    pass_hash_hex = binascii.hexlify(dk).decode("ascii")
+    salt_hex = binascii.hexlify(salt).decode("ascii")
+
+    conn.execute(
+        """INSERT INTO users(email, pass_hash, salt, full_name, role, created_at)
+           VALUES (?, ?, ?, ?, 'admin', datetime('now'))""",
+        (email, pass_hash_hex, salt_hex, name),
+    )
+    return generated
+
+def get_args(description: str = "Dod's Cars"):
+    default_db = os.environ.get("DODS_CARS_DB", str(Path.cwd() / "dods_cars.sqlite3"))
+    default_schema = os.environ.get("DODS_CARS_SCHEMA", "schema.sql")
+    ap = argparse.ArgumentParser(description=description)
+    ap.add_argument("--db", default=default_db, help="Path to SQLite DB file")
+    ap.add_argument("--schema", default=default_schema, help="Path to schema.sql (if autoinit is used)")
+    return ap.parse_args()
+
+# ────────────────────────────────────────────────────────────────────────────────
+# Admin Listings (DB layer via dynamic SELECT)
+# ────────────────────────────────────────────────────────────────────────────────
+def list_all_bookings(status: str | None = None):
+    """
+    Full booking list (optionally filter by status: pending/approved/rejected).
+    Returns rows with joined user & car details.
+    """
+    where = None
+    params = []
+    if status:
+        where = "b.status = ?"
+        params = [status.lower()]
+    return repo().select_dyn(
+        from_table="bookings b",
+        columns=[
+            "b.booking_id",
+            "b.start_date", "b.end_date", "b.rental_days",
+            "b.total_fee", "b.status", "b.created_at",
+            "u.user_id", ("u.full_name", "customer_name"), ("u.email", "customer_email"),
+            "c.car_id", ("c.year", "car_year"), ("c.make", "car_make"), ("c.model", "car_model"),
+        ],
+        joins=[
+            "JOIN users u ON u.user_id = b.user_id",
+            "JOIN cars  c ON c.car_id  = b.car_id",
+        ],
+        where=where,
+        params=params,
+        order_by="b.created_at DESC, b.start_date DESC, b.booking_id DESC",
+    )
+
+def list_all_maintenance(status: str | None = None):
+    """
+    Full maintenance list (optionally filter by status: open/closed).
+    We treat 'open' as end_date IS NULL; 'closed' as end_date NOT NULL.
+    """
+    where = None
+    params = []
+    if status:
+        s = status.lower()
+        if s == "open":
+            where = "m.end_date IS NULL"
+        elif s == "closed":
+            where = "m.end_date IS NOT NULL"
+
+    return repo().select_dyn(
+        from_table="maintenance m",
+        columns=[
+            "m.maint_id", "m.type", "m.cost", "m.start_date", "m.end_date", "m.notes",
+            "c.car_id", ("c.year", "car_year"), ("c.make", "car_make"), ("c.model", "car_model"),
+        ],
+        joins=["JOIN cars c ON c.car_id = m.car_id"],
+        where=where,
+        params=params,
+        order_by="m.start_date DESC, m.maint_id DESC",
+    )
+
+
+# ────────────────────────────────────────────────────────────────────────────────
+# Analytics (DB layer) using dynamic SELECT
+# ────────────────────────────────────────────────────────────────────────────────
+def _year_bounds(year: int):
+    start = f"{year:04d}-01-01"
+    end   = f"{year+1:04d}-01-01"  # exclusive upper bound
+    return start, end
+
+def _year_bounds(year: int):
+    return f"{year:04d}-01-01", f"{year+1:04d}-01-01"  # [start, exclusive_end)
+
+def analytics_top_users(year: int, limit: int = 5):
+    y0, y1 = _year_bounds(year)
+    rows = repo().select_dyn(
+        from_table="bookings b",
+        columns=[
+            "u.user_id", "u.full_name", "u.email",
+            ("COUNT(b.booking_id)", "rentals"),
+            ("COALESCE(SUM(b.total_fee),0.0)", "revenue"),
+        ],
+        joins=["JOIN users u ON u.user_id = b.user_id"],
+        where="LOWER(b.status)='approved' AND b.start_date >= ? AND b.start_date < ?",
+        params=[y0, y1],
+        group_by=["u.user_id"],
+        order_by="revenue DESC, rentals DESC, u.full_name",
+        limit=limit,
+    )
+    return rows
+
+def analytics_top_car_revenue(year: int, limit: int = 5):
+    y0, y1 = _year_bounds(year)
+    return repo().select_dyn(
+        from_table="bookings b",
+        columns=[
+            "c.car_id", "c.year", "c.make", "c.model",
+            ("COUNT(b.booking_id)", "rentals"),
+            ("COALESCE(SUM(b.total_fee),0.0)", "revenue"),
+        ],
+        joins=["JOIN cars c ON c.car_id = b.car_id"],
+        where="LOWER(b.status)='approved' AND b.start_date >= ? AND b.start_date < ?",
+        params=[y0, y1],
+        group_by=["c.car_id"],
+        order_by="revenue DESC, rentals DESC, c.make, c.model",
+        limit=limit,
+    )
+
+def analytics_highest_maint_cost(year: int, limit: int = 5):
+    y0, y1 = _year_bounds(year)
+    return repo().select_dyn(
+        from_table="maintenance m",
+        columns=[
+            "c.car_id", "c.year", "c.make", "c.model",
+            ("COUNT(m.maint_id)", "jobs"),
+            ("COALESCE(SUM(m.cost),0.0)", "total_cost"),
+            ("COALESCE(AVG(m.cost),0.0)", "avg_cost"),
+        ],
+        joins=["JOIN cars c ON c.car_id = m.car_id"],
+        where="m.start_date >= ? AND m.start_date < ?",
+        params=[y0, y1],
+        group_by=["c.car_id"],
+        order_by="total_cost DESC, jobs DESC, c.make, c.model",
+        limit=limit,
+    )
+
+def analytics_most_rented_cars(*, start: str|None, end: str|None, limit: int):
+    where = ["LOWER(b.status)='approved'"]
+    params = []
+    if start:
+        where.append("b.end_date >= ?"); params.append(start)
+    if end:
+        where.append("b.start_date <= ?"); params.append(end)
+    rows = repo().select_dyn(
+        from_table="bookings b",
+        columns=[
+            "c.car_id", "c.year", "c.make", "c.model",
+            ("COUNT(1)", "rentals"),
+            ("COALESCE(SUM(b.rental_days),0)", "days"),
+        ],
+        joins=["JOIN cars c ON c.car_id = b.car_id"],
+        where=" AND ".join(where),
+        params=params,
+        group_by=["c.car_id"],
+        order_by="rentals DESC, days DESC, c.year DESC, c.make ASC, c.model ASC",
+        limit=limit,
+    )
+    return rows
+
+def analytics_monthly_revenue(*, year: int|None, start: str|None, end: str|None):
+    where = ["LOWER(b.status)='approved'"]
+    params = []
+    if year is not None:
+        y0, y1 = _year_bounds(year)
+        where.append("b.start_date >= ? AND b.start_date < ?")
+        params += [y0, y1]
+    if start:
+        where.append("b.end_date >= ?"); params.append(start)
+    if end:
+        where.append("b.start_date <= ?"); params.append(end)
+    return repo().select_dyn(
+        from_table="bookings b",
+        columns=[
+            ("strftime('%Y-%m', b.start_date)", "ym"),
+            ("COALESCE(SUM(b.total_fee),0)", "revenue"),
+            ("COUNT(1)", "bookings"),
+        ],
+        where=" AND ".join(where),
+        params=params,
+        group_by=["strftime('%Y-%m', b.start_date)"],  # avoid alias in GROUP BY
+        order_by="ym ASC",
+    )
+
+def analytics_avg_rental_duration(*, start: str|None, end: str|None):
+    where = ["LOWER(b.status)='approved'"]
+    params = []
+    if start:
+        where.append("b.end_date >= ?"); params.append(start)
+    if end:
+        where.append("b.start_date <= ?"); params.append(end)
+    rows = repo().select_dyn(
+        from_table="bookings b",
+        columns=[("AVG(b.rental_days)", "avg_days")],
+        where=" AND ".join(where),
+        params=params,
+    )
+    v = rows[0].get("avg_days") if rows else None
+    return round(v, 2) if v is not None else None
+
+def analytics_maintenance_summary(*, start: str|None, end: str|None):
+    where = ["1=1"]
+    params = []
+    if start:
+        where.append("m.start_date >= ?"); params.append(start)
+    if end:
+        where.append("(m.end_date IS NULL OR m.end_date <= ?)"); params.append(end)
+    return repo().select_dyn(
+        from_table="maintenance m",
+        columns=[
+            "c.car_id", "c.year", "c.make", "c.model",
+            ("COALESCE(SUM(m.cost),0)", "maint_cost"),
+            ("SUM(CAST((julianday(COALESCE(m.end_date, date('now'))) - julianday(m.start_date)) AS INTEGER))", "downtime_days"),
+        ],
+        joins=["JOIN cars c ON c.car_id = m.car_id"],
+        where=" AND ".join(where),
+        params=params,
+        group_by=["c.car_id"],
+        order_by="maint_cost DESC, downtime_days DESC, c.year DESC",
+    )
+
+def analytics_latest_year_with_data():
+    row = repo().conn.execute(
+        "SELECT MAX(strftime('%Y', start_date)) FROM bookings WHERE status='approved'"
+    ).fetchone()
+    return int(row[0]) if row and row[0] else None
+
+# ────────────────────────────────────────────────────────────────────────────────
+# Diagnostics & robust helpers for analytics
+# ────────────────────────────────────────────────────────────────────────────────
+
+_SQL_DEBUG = False
+def set_sql_debug(flag: bool = True):
+    """Enable/disable SQL debug printing for select_dyn."""
+    global _SQL_DEBUG
+    _SQL_DEBUG = bool(flag)
+
+# Patch select_dyn to print SQL (only if you control it here).
+# If select_dyn already exists, add the two lines guarded by _SQL_DEBUG.
+def select_dyn(self_or_repo, from_table, columns, *, joins=None, where=None,
+               params=None, group_by=None, order_by=None, limit=None):
+    # If you already have a select_dyn method on SqlRepo, IGNORE this wrapper
+    # and instead add the _SQL_DEBUG print where you build 'sql' and 'bind'.
+    raise NotImplementedError("Hook _SQL_DEBUG prints into your existing select_dyn")
+
+def _print_sql_debug(sql: str, bind: list | tuple):
+    if _SQL_DEBUG:
+        print("\n[sql_repo] SQL:\n" + sql.strip())
+        print("[sql_repo] params:", list(bind))
+
+def analytics_debug_counts():
+    """Quick visibility: DB path, counts, min/max dates."""
+    r = repo()
+    print(f"[sql_repo] DB file: {getattr(r, 'db_path', '(unknown)')}")
+    c = r.conn
+    try:
+        total_b = c.execute("SELECT COUNT(*) FROM bookings").fetchone()[0]
+        appr_b  = c.execute("SELECT COUNT(*) FROM bookings WHERE LOWER(status)='approved'").fetchone()[0]
+        rng_b   = c.execute("SELECT MIN(start_date), MAX(start_date) FROM bookings").fetchone()
+        total_m = c.execute("SELECT COUNT(*) FROM maintenance").fetchone()[0]
+        rng_m   = c.execute("SELECT MIN(start_date), MAX(start_date) FROM maintenance").fetchone()
+        print(f"[sql_repo] bookings: total={total_b}, approved={appr_b}, range={rng_b[0]}..{rng_b[1]}")
+        print(f"[sql_repo] maint:    total={total_m}, range={rng_m[0]}..{rng_m[1]}")
+    except Exception as e:
+        print(f"[sql_repo] debug error: {e}")
+
+def analytics_years_with_data():
+    """Years that have APPROVED bookings (strings like '2022', '2023', ...)."""
+    q = "SELECT DISTINCT substr(start_date,1,4) AS y FROM bookings WHERE LOWER(status)='approved' ORDER BY y"
+    cur = repo().conn.execute(q)
+    return [int(r["y"]) for r in cur.fetchall() if r["y"] and r["y"].isdigit()]
+
+def analytics_latest_year_with_data():
+    ys = analytics_years_with_data()
+    return ys[-1] if ys else None
