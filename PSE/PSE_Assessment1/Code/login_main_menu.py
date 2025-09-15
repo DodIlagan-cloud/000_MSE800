@@ -15,7 +15,7 @@ Usage:
 """
 from __future__ import annotations
 
-import sys
+import sys, os, ctypes
 import sql_repo
 import user_repo
 import admin_repo
@@ -121,18 +121,65 @@ def menu_handle(user, choice: str) -> str:
     return "continue"
 
 # ────────────────────────────────────────────────────────────────────────────────
+# For Portability - One Click Run
+# ────────────────────────────────────────────────────────────────────────────────
+def _resource_path(name: str) -> str:
+    # Works both in source and PyInstaller
+    base = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base, name)
+
+def _data_dir(per_user: bool = True) -> str:
+    """
+    Per-user app data (default): %LOCALAPPDATA%\DodCars
+    Machine-wide (shared):      %ProgramData%\DodCars
+    """
+    if os.name == "nt":
+        root = os.environ.get("LOCALAPPDATA" if per_user else "ProgramData", os.path.expanduser("~"))
+        p = os.path.join(root, "DodCars")
+    else:
+        p = os.path.join(os.path.expanduser("~"), ".local", "share", "DodCars")
+    os.makedirs(p, exist_ok=True)
+    return p
+
+# ---- Windows Hidden attribute helpers ----
+_FILE_ATTRIBUTE_HIDDEN = 0x2
+
+def _hide_windows(path: str) -> None:
+    if os.name != "nt" or not os.path.exists(path):
+        return
+    try:
+        k32 = ctypes.windll.kernel32
+        attrs = k32.GetFileAttributesW(path)
+        if attrs != 0xFFFFFFFF:
+            k32.SetFileAttributesW(path, attrs | _FILE_ATTRIBUTE_HIDDEN)
+    except Exception:
+        pass
+# ────────────────────────────────────────────────────────────────────────────────
 # Main
 # ────────────────────────────────────────────────────────────────────────────────
 def main() -> int:
     print(BANNER)
 
-    # Standard --db arg + portable bootstrap/seed
-    args = sql_repo.get_args(description="Dod's Cars")
-    # Initialize schema on first run (ignore if schema.sql not available)
+   # Try to get args from sql_repo, but fall back to sane defaults for EXE double-click
+    per_user = True            # <-- set to False if you prefer %ProgramData%\DodCars (shared DB)
+    explicit_db = any(a.startswith("--db") for a in sys.argv)
+
     try:
-        sql_repo.autoinit(args.db, schema_path="schema.sql", seed=True)
-    except Exception as e:
-        print(f"(autoinit skipped: {e})")
+        args = sql_repo.get_args(description="Dod's Cars")
+        schema_path = getattr(args, "schema", None) or _resource_path("schema.sql")
+        if explicit_db:
+            db_path = args.db
+        else:
+            db_path = os.path.join(_data_dir(per_user=per_user), "dods_cars.sqlite3")
+    except Exception:
+        schema_path = _resource_path("schema.sql")
+        db_path = os.path.join(_data_dir(per_user=per_user), "dods_cars.sqlite3")
+
+    # Ensure runtime files live there too (optional: set working dir)
+    os.chdir(os.path.dirname(db_path))
+
+    # First-run init (admin-only seed, per your updated sql_repo)
+    sql_repo.autoinit(db_path, schema_path=schema_path, seed_admin=True)
 
     # Enforce non-empty values on INSERTs (repo-level guard)
     try:
