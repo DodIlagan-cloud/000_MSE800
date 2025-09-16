@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS users (
   salt        TEXT NOT NULL,
   full_name   TEXT NOT NULL,
   role        TEXT NOT NULL CHECK (role IN ('customer','admin')),
+  active      INTEGER NOT NULL DEFAULT 1,    
   created_at  DATETIME NOT NULL DEFAULT (datetime('now'))
 );
 

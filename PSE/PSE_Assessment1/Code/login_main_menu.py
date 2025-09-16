@@ -14,13 +14,16 @@ Usage:
   python login_main_menu.py --db dods_cars.sqlite3
 """
 from __future__ import annotations
-
+from sql_repo import logout_user
 import sys, os, ctypes
 import sql_repo
 import user_repo
 import admin_repo
 import customer_repo
 
+args = sql_repo.get_args(description="Dod's Cars")
+sql_repo.autoinit(args.db, schema_path="schema.sql", seed_admin=True)
+sql_repo.require_tables_configured(["users","cars","bookings","booking_charges","maintenance"])
 
 BANNER = r"""
 ======================================
@@ -207,14 +210,17 @@ def main() -> int:
             try:
                 choice = input("Choose: ").strip()
             except (EOFError, KeyboardInterrupt):
+                logout_user()
                 print("\nGoodbye!\n")
                 return 0
 
             state = menu_handle(user, choice)
             if state == "logout":
+                logout_user()
                 print("\nLogged out.\n")
                 break
             if state == "exit":
+                logout_user()
                 print("\nGoodbye!\n")
                 return 0
 
