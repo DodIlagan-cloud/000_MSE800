@@ -138,6 +138,107 @@ def parse_args():
     p.add_argument("--year", type=int, help="Year for monthly/annual reports (e.g., 2025)")
     return p.parse_args()
 
+# ────────────────────────────────────────────────────────────────────────────────
+# Class API for tests (non-interactive; pure data results)
+# ────────────────────────────────────────────────────────────────────────────────
+from collections import defaultdict
+from datetime import datetime
+from sql_repo import repo as _repo
+
+class AnalyticsRepo:
+    """Read-only analytics that return plain lists/dicts (no printing)."""
+
+    def __init__(self):
+        self.sql = _repo()
+
+    # List[{"month": "YYYY-MM", "revenue": float}]
+    def monthly_revenue(self, *, year: int):
+        start = f"{year}-01-01"; next_year = f"{year+1}-01-01"
+        rows = self.sql.select("bookings", where={
+            "status__eq": "approved",
+            "start_date__ge": start,
+            "start_date__lt": next_year,
+        })
+        agg = defaultdict(float)
+        for b in rows:
+            month = (b.get("start_date") or "")[:7]  # YYYY-MM
+            agg[month] += float(b.get("total_fee") or 0.0)
+        return [{"month": m, "revenue": v} for m, v in sorted(agg.items())]
+
+    # List[{"user_id": int, "revenue": float}]
+    # (All-time unless you prefer to restrict to a year; keep as all-time for test alignment.)
+    def top_customers(self, limit: int = 5):
+        rows = self.sql.select("bookings", where={"status__eq": "approved"})
+        agg = defaultdict(float)
+        for b in rows:
+            agg[int(b["user_id"])] += float(b.get("total_fee") or 0.0)
+        ranked = sorted(agg.items(), key=lambda kv: kv[1], reverse=True)[:limit]
+        return [{"user_id": uid, "revenue": rev} for uid, rev in ranked]
+
+    # List[{"car_id": int, "revenue": float}] for a given year
+    def top_revenue_cars(self, *, year: int, limit: int = 5):
+        start = f"{year}-01-01"; next_year = f"{year+1}-01-01"
+        rows = self.sql.select("bookings", where={
+            "status__eq": "approved",
+            "start_date__ge": start,
+            "start_date__lt": next_year,
+        })
+        agg = defaultdict(float)
+        for b in rows:
+            agg[int(b["car_id"])] += float(b.get("total_fee") or 0.0)
+        ranked = sorted(agg.items(), key=lambda kv: kv[1], reverse=True)[:limit]
+        return [{"car_id": cid, "revenue": rev} for cid, rev in ranked]
+
+    # List[{"month": "YYYY-MM", "cost": float}]
+    def maintenance_costs_by_month(self, *, year: int):
+        start = f"{year}-01-01"; next_year = f"{year+1}-01-01"
+        rows = self.sql.select("maintenance", where={
+            "start_date__ge": start,
+            "start_date__lt": next_year,
+        })
+        agg = defaultdict(float)
+        for m in rows:
+            month = (m.get("start_date") or "")[:7]
+            agg[month] += float(m.get("cost") or 0.0)
+        return [{"month": k, "cost": v} for k, v in sorted(agg.items())]
+
+    # List[{"month": "YYYY-MM", "days": int}]
+    def maintenance_downtime_days_by_month(self, *, year: int):
+        start = f"{year}-01-01"; next_year = f"{year+1}-01-01"
+        rows = self.sql.select("maintenance", where={
+            "start_date__ge": start,
+            "start_date__lt": next_year,
+        })
+        agg = defaultdict(int)
+        for m in rows:
+            s = (m.get("start_date") or "")[:10]
+            e = (m.get("end_date") or "")[:10]
+            try:
+                ds = datetime.strptime(s, "%Y-%m-%d").date()
+                de = datetime.strptime(e, "%Y-%m-%d").date()
+                days = max(0, (de - ds).days)
+                agg[s[:7]] += days
+            except Exception:
+                pass
+        return [{"month": k, "days": v} for k, v in sorted(agg.items())]
+    
+    # --- aliases expected by tests ---
+    revenue_by_month = monthly_revenue
+    get_monthly_revenue = monthly_revenue
+
+    get_top_customers = top_customers
+    top_customers_by_revenue = top_customers
+
+    get_top_revenue_cars = top_revenue_cars
+    top_cars_by_revenue = top_revenue_cars
+
+    maintenance_costs_monthly = maintenance_costs_by_month
+    get_maintenance_costs_by_month = maintenance_costs_by_month
+
+    maintenance_downtime_monthly = maintenance_downtime_days_by_month
+    get_maintenance_downtime_days_by_month = maintenance_downtime_days_by_month
+
+
 def main():
     args = parse_args()
 
