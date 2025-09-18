@@ -462,25 +462,26 @@ def admin_analytics_menu():
         print(" 0) Back")
         choice = input("Choose: ").strip()
 
+        if choice in ("1","2","3"):
         # Year (defaults to current if blank)
-        y_in = input("Enter year (YYYY) [default: current]: ").strip()
-        if not y_in:
-            year = datetime.date.today().year
-        else:
-            try:
-                year = int(y_in)
-            except ValueError:
-                print("Please enter a valid year (e.g., 2025).")
-                continue
+            y_in = input("Enter year (YYYY) [default: current]: ").strip()
+            if not y_in:
+                year = datetime.date.today().year
+            else:
+                try:
+                    year = int(y_in)
+                except ValueError:
+                    print("Please enter a valid year (e.g., 2025).")
+                    continue
 
-        # Row limit (defaults to 5)
-        lim_in = input("How many rows? [5]: ").strip()
-        limit = 5
-        if lim_in:
-            try:
-                limit = max(1, int(lim_in))
-            except ValueError:
-                print("Using default: 5")
+            # Row limit (defaults to 5)
+            lim_in = input("How many rows? [5]: ").strip()
+            limit = 5
+            if lim_in:
+                try:
+                    limit = max(1, int(lim_in))
+                except ValueError:
+                    print("Using default: 5")
 
 
         if choice == "0":
@@ -496,3 +497,4 @@ def admin_analytics_menu():
             analytics_repo.print_highest_maint_cost(year, limit)
         else:
             print("Please choose a valid option.")
+
