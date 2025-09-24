@@ -186,7 +186,6 @@ class BookingRepo:
     # ──────────────────────────────────────────────────────────────────────
     def create_pending(
         self,
-        *,
         user_id: int,
         car_id: int,
         start_date: str | "date",
