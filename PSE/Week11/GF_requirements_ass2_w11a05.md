@@ -3,8 +3,8 @@
 ## 👥 Team Members
 | Role | Name | Responsibilities |
 |------|------|------------------|
-| **Backend Developer** | **Dod** | FastAPI backend, PostgreSQL DB, reminder CRUD, CI setup, testing & documentation |
-| **Android Developer** | **Mark** | Android front-end (Compose/Flutter), geofencing logic, notification handling, UI integration |
+| **Backend Developer** | **Eduardo JR Ilagan** | FastAPI backend, PostgreSQL DB, reminder CRUD, CI setup, testing & documentation |
+| **Android Developer** | **Mark dela Torre** | Android front-end (Compose/Flutter), geofencing logic, notification handling, UI integration |
 | **Both (Joint Tasks)** | **Dod & Mark** | Testing, polish, and final release documentation |
 
 ---
