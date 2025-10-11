@@ -49,5 +49,4 @@ GEOFENCE | In Progress |
 
 ---
 
-📅 **Last Updated:** October 2025  
-🧭 **Next Focus:** Complete remaining “WX-RULES” and “POLISH” epics before second release (weather integration milestone).
+
