@@ -1,4 +1,7 @@
-"""W12 A1 - Flask test"""
+"""
+W12 A1 - Flask test
+Eduardo JR Ilagan
+"""
 from flask import Flask
 
 app = Flask(__name__)
