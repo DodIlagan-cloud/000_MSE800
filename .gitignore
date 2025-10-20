@@ -28,3 +28,6 @@ PSE/Week11/Exp3-doctest.py
 /PSE/Week12/templates
 PSE/Week12/django_activity/django_activity/__init__.py
 /PSE/Week12/django_activity/django_activity/__pycache__
+/PSE/Week12/myproject/myproject
+*.py
+/PSE/Week12/django_activity/converter/__pycache__

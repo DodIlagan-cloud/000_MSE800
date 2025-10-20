@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Dod's Thermo</title>
+  {% load static %}
+  <link rel="stylesheet" href="{% static 'style.css' %}">
+</head>
+<body>
+  <h1>Temperature Converter</h1>
+
+  <form method="POST">
+    {% csrf_token %}
+    <label>Enter Temperature:</label>
+    <input type="number" step="any" name="temp" required><br>
+
+    <h2>Select Conversion:</h2>
+    <label><input type="radio" name="conversion" value="CtoF" required> Celsius → Fahrenheit</label><br>
+    <label><input type="radio" name="conversion" value="FtoC"> Fahrenheit → Celsius</label><br>
+    <label><input type="radio" name="conversion" value="CtoK"> Celsius → Kelvin</label><br>
+    <label><input type="radio" name="conversion" value="KtoC"> Kelvin → Celsius</label><br>
+    <label><input type="radio" name="conversion" value="FtoK"> Fahrenheit → Kelvin</label><br>
+    <label><input type="radio" name="conversion" value="KtoF"> Kelvin → Fahrenheit</label><br><br>
+
+    <button type="submit">Convert</button>
+  </form>
+
+  {% if result is not None %}
+    <h3>Converted Temperature: {{ result }} {{ unit }}</h3>
+  {% endif %}
+</body>
+</html>

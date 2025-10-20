@@ -1,0 +1,73 @@
+/* ---------- Global Styles ---------- */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f3efe0;   /* soft beige */
+    color: #3b3a36;              /* dark brown-grey text */
+    text-align: center;
+    margin: 0;
+    padding: 0;
+}
+
+h2 {
+    color: #5c4033;              /* deep earthy brown */
+    margin-top: 40px;
+}
+
+/* ---------- Form Container ---------- */
+form {
+    display: inline-block;
+    padding: 30px 40px;
+    background-color: #e5d9b6;   /* light olive-beige */
+    border-radius: 12px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    text-align: left;
+}
+
+/* ---------- Input and Button Styles ---------- */
+input[type="number"] {
+    width: 150px;
+    padding: 6px 10px;
+    border: 1px solid #c2b280;
+    border-radius: 6px;
+    background-color: #fffaf0;
+    color: #3b3a36;
+}
+
+button {
+    background-color: #a27b5c;   /* warm brown */
+    color: #fff;
+    border: none;
+    padding: 8px 18px;
+    margin-top: 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.3s ease;
+}
+
+button:hover {
+    background-color: #8b5e3c;   /* darker brown */
+}
+
+/* ---------- Radio Buttons and Labels ---------- */
+label {
+    display: block;
+    margin: 5px 0;
+    cursor: pointer;
+}
+
+input[type="radio"] {
+    margin-right: 6px;
+}
+
+/* ---------- Result Section ---------- */
+.result {
+    margin-top: 25px;
+    padding: 15px;
+    display: inline-block;
+    background-color: #d7ccc8;   /* soft taupe */
+    border-radius: 10px;
+    font-size: 18px;
+    color: #3b3a36;
+    font-weight: bold;
+}
