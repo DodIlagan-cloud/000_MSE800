@@ -1,0 +1,14 @@
+In the Exp3-doctest.py, the bug is on the test case for factorial(34). 
+The actual result doesnt match the expected answer documented in the test case.
+
+The code is for a function doing factorial operation on numbers. 
+There are error handling coded to check the input "n". 
+Each error handling is coded in an if statement and is tested via doctest.
+The test cases are embedded in the docstring of the function. 
+
+doctest provides a quick way of doing tests as it is done by providing the test case in the docstring of the function itself. 
+I see this as a very useful way of testing while coding. 
+However, it might not suit a large project as the other ways of testing such as unittest and pytest,
+provides a more structured approach. unittest and pytest provides results that could be taken as artefacts which is very good for documentation.
+
+
